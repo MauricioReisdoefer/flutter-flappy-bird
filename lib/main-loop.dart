@@ -12,16 +12,16 @@ class Cano {
   late SpriteComponent canoB;
 
   Future<void> loadCano(final Sprite sprite_) async {
-    double numero = random.nextInt(301) - 600;
+    double numero = random.nextInt(451) - 600;
     canoA = SpriteComponent()
       ..sprite = sprite_
-      ..size = Vector2(200, 400)
+      ..size = Vector2(200, 600)
       ..position = Vector2(800, numero);
 
     canoB = SpriteComponent()
       ..sprite = sprite_
-      ..size = Vector2(200, 400)
-      ..position = Vector2(800, 600 + numero); 
+      ..size = Vector2(200, 600)
+      ..position = Vector2(800, 800 + numero); 
   }
   void addToGame(FlameGame game) {
     game.add(canoA);
@@ -37,53 +37,75 @@ class Cano {
 
 class FlappyBird extends FlameGame with HasKeyboardHandlerComponents, TapDetector {
   late SpriteComponent player;
-  late Cano cano;
-  double velocityY = 0;
-  final double gravity = 1200;   
-  final double jumpForce = -600;
+  final List<Cano> canos = [];
+  late Sprite canoSprite;
 
-  double velocityX = -250;
+  double velocityY = 0;
+  final double gravity = 1200;
+  final double jumpForce = -600;
+  final double velocityX = -250;
+
+  double tempoNovoCano = 0;
 
   @override
   Future<void> onLoad() async {
-    final cano_sprite = await loadSprite('cano.png');
-    final sprite = await loadSprite('bird.png');
-    print("Sprites carregado com sucesso");
+    canoSprite = await loadSprite('cano.png');
+    final birdSprite = await loadSprite('bird.png');
+    print("Sprites carregados");
 
     player = SpriteComponent()
-      ..sprite = sprite
+      ..sprite = birdSprite
       ..size = Vector2(100, 100)
       ..position = Vector2(100, 100);
-
     add(player);
 
-    cano = Cano();
-    await cano.loadCano(cano_sprite);
-    cano.addToGame(this);
+    spawnCano(); 
+  }
+
+  void spawnCano() async {
+    final novoCano = Cano();
+    await novoCano.loadCano(canoSprite);
+    novoCano.addToGame(this);
+    canos.add(novoCano);
   }
 
   @override
   void update(double dt) {
-    cano.moveCano(velocityX * dt);
+    super.update(dt);
 
-    velocityY += gravity * dt;           
+    velocityY += gravity * dt;
     player.position.y += velocityY * dt;
 
     if (player.position.y > 500) {
       player.position.y = 500;
       velocityY = 0;
-    }
-    else if (player.position.y < 0)
-    {
+    } else if (player.position.y < 0) {
       player.position.y = 0;
       velocityY = 0;
     }
-    super.update(dt);
+
+    for (final cano in canos) {
+      cano.moveCano(velocityX * dt);
+    }
+
+    canos.removeWhere((cano) {
+      if (cano.canoA.position.x + cano.canoA.size.x < 0) {
+        cano.canoA.removeFromParent();
+        cano.canoB.removeFromParent();
+        return true;
+      }
+      return false;
+    });
+
+    tempoNovoCano -= dt;
+    if (tempoNovoCano <= 0) {
+      spawnCano();
+      tempoNovoCano = 2.0; 
+    }
   }
 
   @override
   void onTap() {
-    super.onTap();
     velocityY = jumpForce;
   }
 }
